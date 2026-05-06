@@ -1,0 +1,57 @@
+version: 0.2
+
+env:
+  parameter-store:
+    SONAR_TOKEN: /swiggy/SONAR_TOKEN
+    SONAR_HOST_URL: /swiggy/SONAR_HOST_URL
+    MONGO_URI: /swiggy/MONGO_URI
+    JWT_SECRET: /swiggy/JWT_SECRET
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 17
+    commands:
+      - echo Installing Trivy...
+      - rpm -ivh https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.rpm || true
+      - wget -qO - https://aquasecurity.github.io/trivy-repo/rpm/public.key | sudo apt-key add - || true
+      - apt-get install -y trivy || true
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin || true
+      - echo Installing SonarScanner...
+      - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
+      - unzip sonar-scanner-cli-4.7.0.2747-linux.zip
+      - export PATH=$PATH:$(pwd)/sonar-scanner-4.7.0.2747-linux/bin
+
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI
+      - echo Running Trivy filesystem scan...
+      - trivy fs --exit-code 0 --severity HIGH,CRITICAL . || true
+      - echo Running SonarQube Analysis...
+      - sonar-scanner -Dsonar.projectKey=swiggy-clone -Dsonar.sources=. -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN || true
+
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build -t $ECR_REPO_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+      - docker tag $ECR_REPO_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION $ECR_REPO_URI:latest
+      - echo Running Trivy image scan...
+      - trivy image --exit-code 0 --severity CRITICAL $ECR_REPO_URI:latest || true
+
+  post_build:
+    commands:
+      - echo Pushing Docker image to ECR...
+      - docker push $ECR_REPO_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPO_URI:latest
+      - echo Writing image definitions file...
+      - printf '[{"name":"swiggy-container","imageUri":"%s"}]' $ECR_REPO_URI:latest > imagedefinitions.json
+      - echo Writing appspec and taskdef...
+      - cat appspec.yaml
+      - cat taskdef.json
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yaml
+    - taskdef.json

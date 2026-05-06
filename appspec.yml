@@ -1,0 +1,16 @@
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: <TASK_DEFINITION>
+        LoadBalancerInfo:
+          ContainerName: "swiggy-container"
+          ContainerPort: 80
+        PlatformVersion: "LATEST"
+DeploymentReadyOption:
+  actionOnTimeout: CONTINUE_DEPLOYMENT
+  waitTimeInMinutes: 0
+LifecycleEventHooks:
+  BeforeAllowTraffic: null
+  AfterAllowTraffic: null
