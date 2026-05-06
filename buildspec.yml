@@ -47,8 +47,9 @@ phases:
       - echo Writing image definitions file...
       - printf '[{"name":"swiggy-container","imageUri":"%s"}]' $ECR_REPO_URI:latest > imagedefinitions.json
       - echo Writing appspec and taskdef...
-      - cat appspec.yaml
-      - cat taskdef.json
+      - ls -la
+      - cat ./appspec.yaml
+      - cat ./taskdef.json
 
 artifacts:
   files:
