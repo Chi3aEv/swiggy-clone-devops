@@ -1,6 +1,6 @@
 {
   "family": "swiggy-task",
-  "networkMode": "bridge",
+  "networkMode": "awsvpc",
   "containerDefinitions": [
     {
       "name": "swiggy-container",
