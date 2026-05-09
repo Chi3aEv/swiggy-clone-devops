@@ -13,9 +13,6 @@ phases:
       nodejs: 17
     commands:
       - echo Installing Trivy...
-      - rpm -ivh https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.rpm || true
-      - wget -qO - https://aquasecurity.github.io/trivy-repo/rpm/public.key | sudo apt-key add - || true
-      - apt-get install -y trivy || true
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin || true
       - echo Installing SonarScanner...
       - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
@@ -46,13 +43,14 @@ phases:
       - docker push $ECR_REPO_URI:latest
       - echo Writing image definitions file...
       - printf '[{"name":"swiggy-container","imageUri":"%s"}]' $ECR_REPO_URI:latest > imagedefinitions.json
-      - echo Writing appspec and taskdef...
+      - printf '{"ImageURI":"%s"}' $ECR_REPO_URI:latest > imageDetail.json
       - ls -la
-      - cat ./appspec.yml
+      - cat ./appspec.yaml
       - cat ./taskdef.json
 
 artifacts:
   files:
     - imagedefinitions.json
-    - appspec.yml
+    - imageDetail.json
+    - appspec.yaml
     - taskdef.json
